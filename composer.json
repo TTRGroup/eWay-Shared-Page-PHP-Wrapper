@@ -1,5 +1,5 @@
 {
-    "name": "benhawker/eWay-Shared-Page-PHP-Wrapper",
+    "name": "benhawker/eway-shared-php-wrapper",
     "type": "library",
     "version": "0.1",
     "description": "API Wrapper for eWay shared page (3.1)",
