@@ -1,4 +1,8 @@
-<?php namespace Benhawker\Eway;
+<?php namespace Benhawker\EwayShared;
+
+use Benhawker\EwayShared\Exceptions\EwaySharedMissingFieldError;
+use Benhawker\EwayShared\Exceptions\EwaySharedValidateFieldError;
+use Benhawker\EwayShared\Library\Curl;
 
 class Eway
 {
@@ -9,13 +13,6 @@ class Eway
      * @var bool
      */
     protected $sandbox;
-
-    /**
-     * The eWay partner ID.
-     *
-     * @var string
-     */
-    protected $partnerId;
 
     /**
      * The web address the customer is redirected to with the result of the action.
@@ -182,166 +179,17 @@ class Eway
      */
     protected $transactionAmount;
 
-     /**
-     * Response codes returned by the gateway.
-     * The list of codes is complete according to the
-     * {@link http://www.eway.com.au/Developer/payment-code/transaction-results-response-codes.aspx eWAY Payment Gateway Bank Response Codes}.
+    /**
+     * Hold the curl object
      *
-     * @var array
+     * @var object
      */
-    protected static $responseCodes = array(
-            'F7000' => "Undefined Fraud",
-            'V5000' => "Undefined System",
-            'A0000' => "Undefined Approved",
-            'A2000' => "Transaction Approved",
-            'A2008' => "Honour With Identification",
-            'A2010' => "Approved For Partial Amount",
-            'A2011' => "Approved VIP",
-            'A2016' => "Approved Update Track 3",
-            'V6000' => "Undefined Validation",
-            'V6001' => "Invalid Request CustomerIP",
-            'V6002' => "Invalid Request DeviceID",
-            'V6011' => "Invalid Payment Amount",
-            'V6012' => "Invalid Payment InvoiceDescription",
-            'V6013' => "Invalid Payment InvoiceNumber",
-            'V6014' => "Invalid Payment InvoiceReference",
-            'V6015' => "Invalid Payment CurrencyCode",
-            'V6016' => "Payment Required",
-            'V6017' => "Payment CurrencyCode Required",
-            'V6018' => "Unknown Payment CurrencyCode",
-            'V6021' => "Cardholder Name Required",
-            'V6022' => "Card Number Required",
-            'V6023' => "CVN Required",
-            'V6031' => "Invalid Card Number",
-            'V6032' => "Invalid CVN",
-            'V6033' => "Invalid Expiry Date",
-            'V6034' => "Invalid Issue Number",
-            'V6035' => "Invalid Start Date",
-            'V6036' => "Invalid Month",
-            'V6037' => "Invalid Year",
-            'V6040' => "Invalid Token Customer Id",
-            'V6041' => "Customer Required",
-            'V6042' => "Customer First Name Required",
-            'V6043' => "Customer Last Name Required",
-            'V6044' => "Customer Country Code Required",
-            'V6045' => "Customer Title Required",
-            'V6046' => "Token Customer ID Required",
-            'V6047' => "RedirectURL Required",
-            'V6051' => "Invalid Customer First Name",
-            'V6052' => "Invalid Customer Last Name",
-            'V6053' => "Invalid Customer Country Code",
-            'V6054' => "Invalid Customer Email",
-            'V6055' => "Invalid Customer Phone",
-            'V6056' => "Invalid Customer Mobile",
-            'V6057' => "Invalid Customer Fax",
-            'V6058' => "Invalid Customer Title",
-            'V6059' => "Redirect URL Invalid",
-            'V6060' => "Redirect URL Invalid",
-            'V6061' => "Invalid Customer Reference",
-            'V6062' => "Invalid Customer CompanyName",
-            'V6063' => "Invalid Customer JobDescription",
-            'V6064' => "Invalid Customer Street1",
-            'V6065' => "Invalid Customer Street2",
-            'V6066' => "Invalid Customer City",
-            'V6067' => "Invalid Customer State",
-            'V6068' => "Invalid Customer Postalcode",
-            'V6069' => "Invalid Customer Email",
-            'V6070' => "Invalid Customer Phone",
-            'V6071' => "Invalid Customer Mobile",
-            'V6072' => "Invalid Customer Comments",
-            'V6073' => "Invalid Customer Fax",
-            'V6074' => "Invalid Customer Url",
-            'V6075' => "Invalid ShippingAddress FirstName",
-            'V6076' => "Invalid ShippingAddress LastName",
-            'V6077' => "Invalid ShippingAddress Street1",
-            'V6078' => "Invalid ShippingAddress Street2",
-            'V6079' => "Invalid ShippingAddress City",
-            'V6080' => "Invalid ShippingAddress State",
-            'V6081' => "Invalid ShippingAddress PostalCode",
-            'V6082' => "Invalid ShippingAddress Email",
-            'V6083' => "Invalid ShippingAddress Phone",
-            'V6084' => "Invalid ShippingAddress Country",
-            'V6091' => "Unknown Country Code",
-            'V6100' => "Invalid ProcessRequest name",
-            'V6101' => "Invalid ProcessRequest ExpiryMonth",
-            'V6102' => "Invalid ProcessRequest ExpiryYear",
-            'V6103' => "Invalid ProcessRequest StartMonth",
-            'V6104' => "Invalid ProcessRequest StartYear",
-            'V6105' => "Invalid ProcessRequest IssueNumber",
-            'V6106' => "Invalid ProcessRequest CVN",
-            'V6107' => "Invalid ProcessRequest AccessCode",
-            'V6108' => "Invalid ProcessRequest CustomerHostAddress",
-            'V6109' => "Invalid ProcessRequest UserAgent",
-            'V6110' => "Invalid ProcessRequest Number",
-            'D4401' => "Refer to Issuer",
-            'D4402' => "Refer to Issuer, special",
-            'D4403' => "No Merchant",
-            'D4404' => "Pick Up Card",
-            'D4405' => "Do Not Honour",
-            'D4406' => "Error",
-            'D4407' => "Pick Up Card, Special",
-            'D4409' => "Request In Progress",
-            'D4412' => "Invalid Transaction",
-            'D4413' => "Invalid Amount",
-            'D4414' => "Invalid Card Number",
-            'D4415' => "No Issuer",
-            'D4419' => "Re-enter Last Transaction",
-            'D4421' => "No Method Taken",
-            'D4422' => "Suspected Malfunction",
-            'D4423' => "Unacceptable Transaction Fee",
-            'D4425' => "Unable to Locate Record On File",
-            'D4430' => "Format Error",
-            'D4431' => "Bank Not Supported By Switch",
-            'D4433' => "Expired Card, Capture",
-            'D4434' => "Suspected Fraud, Retain Card",
-            'D4435' => "Card Acceptor, Contact Acquirer, Retain Card",
-            'D4436' => "Restricted Card, Retain Card",
-            'D4437' => "Contact Acquirer Security Department, Retain Card",
-            'D4438' => "PIN Tries Exceeded, Capture",
-            'D4439' => "No Credit Account",
-            'D4440' => "Function Not Supported",
-            'D4441' => "Lost Card",
-            'D4442' => "No Universal Account",
-            'D4443' => "Stolen Card",
-            'D4444' => "No Investment Account",
-            'D4451' => "Insufficient Funds",
-            'D4452' => "No Cheque Account",
-            'D4453' => "No Savings Account",
-            'D4454' => "Expired Card",
-            'D4455' => "Incorrect PIN",
-            'D4456' => "No Card Record",
-            'D4457' => "Function Not Permitted to Cardholder",
-            'D4458' => "Function Not Permitted to Terminal",
-            'D4460' => "Acceptor Contact Acquirer",
-            'D4461' => "Exceeds Withdrawal Limit",
-            'D4462' => "Restricted Card",
-            'D4463' => "Security Violation",
-            'D4464' => "Original Amount Incorrect",
-            'D4466' => "Acceptor Contact Acquirer, Security",
-            'D4467' => "Capture Card",
-            'D4475' => "PIN Tries Exceeded",
-            'D4482' => "CVV Validation Error",
-            'D4490' => "Cutoff In Progress",
-            'D4491' => "Card Issuer Unavailable",
-            'D4492' => "Unable To Route Transaction",
-            'D4493' => "Cannot Complete, Violation Of The Law",
-            'D4494' => "Duplicate Transaction",
-            'D4496' => "System Error"
-    );
+    protected $curl;
 
-    public function __construct(array $settings)
+    public function __construct($apiKey, $password, $sandbox = false)
     {
-        if (!isset([$settings'partnerId'])) {
-            throw new ErrorException('Please make sure you set a partnerId')
-        }
-        $this->partnerId   = $settings['partnerId'],
-
-        $this->sandbox     = (isset($settings['sandbox'])) ? $settings['sandbox'] : false;
-        $this->redirectUrl = (isset($settings['redirectUrl'])) ? $settings['redirectUrl'] : '';
-        $this->cancelUrl   = (isset($settings['cancelUrl'])) ? $settings['cancelUrl'] : '';
-        $this->logoUrl     = (isset($settings['logoUrl'])) ? $settings['logoUrl'] : '';
-        $this->headerText  = (isset($settings['headerText'])) ? $settings['headerText'] : '';
-        $this->customView  = (isset($settings['customView'])) ? $settings['customView'] : '';
+        $this->sandbox  = $sandbox;
+        $this->curl     = new Curl($apiKey, $password);
     }
 
     /**
@@ -358,19 +206,6 @@ class Eway
     }
 
     /**
-     * Set the eWay partner ID.
-     *
-     * @param  string $partnerId
-     * @return object (this)
-     */
-    public function setPartnerId($partnerId)
-    {
-        $this->partnerId = $partnerId;
-
-        return $this;
-    }
-
-    /**
      * Set the web address the customer is redirected to with the result of the action.
      *
      * @param  string (url) $redirectUrl
@@ -379,7 +214,7 @@ class Eway
     public function setRedirectUrl($redirectUrl)
     {
         if (!filter_var($redirectUrl, FILTER_VALIDATE_URL, FILTER_FLAG_HOST_REQUIRED)) {
-            throw new ErrorException('Redirect Url was not a valid URL');
+            throw new EwaySharedValidateFieldError('Redirect Url was not a valid URL');
         }
 
         $this->redirectUrl = $redirectUrl;
@@ -396,7 +231,7 @@ class Eway
     public function SetCancelUrl($cancelUrl)
     {
         if (!filter_var($cancelUrl, FILTER_VALIDATE_URL, FILTER_FLAG_HOST_REQUIRED)) {
-            throw new ErrorException('Cancel Url was not a valid URL');
+            throw new EwaySharedValidateFieldError('Cancel Url was not a valid URL');
         }
 
         $this->cancelUrl = $cancelUrl;
@@ -413,7 +248,7 @@ class Eway
     public function setLogoUrl($logoUrl)
     {
         if (!filter_var($logoUrl, FILTER_VALIDATE_URL, FILTER_FLAG_HOST_REQUIRED)) {
-            throw new ErrorException('Logo Url was not a valid URL');
+            throw new EwaySharedValidateFieldError('Logo Url was not a valid URL');
         }
 
         $this->logoUrl = $logoUrl;
@@ -430,7 +265,7 @@ class Eway
     public function setHeaderText($headerText)
     {
         if (strlen($headerText) > 255) {
-            throw new ErrorException('Header text must not exceed 255 characters in length');
+            throw new EwaySharedValidateFieldError('Header text must not exceed 255 characters in length');
         }
 
         $this->headerText = $headerText;
@@ -459,8 +294,8 @@ class Eway
      */
     public function setCustomerIp($customerIp)
     {
-        if (filter_var($customerIp, FILTER_VALIDATE_IP)) {
-            throw new ErrorException('Please set a valid IP address');
+        if (!filter_var($customerIp, FILTER_VALIDATE_IP)) {
+            throw new EwaySharedValidateFieldError('Please set a valid IP address');
         }
 
         $this->customerIp = $customerIp;
@@ -476,7 +311,7 @@ class Eway
      */
     public function setPaymentTotalAmount($paymentTotalAmount)
     {
-        $this->paymentTotalAmount = (int) round($paymentTotalAmount * 100);
+        $this->paymentTotalAmount = $paymentTotalAmount * 100;
 
         return $this;
     }
@@ -490,7 +325,7 @@ class Eway
     public function setPaymentInvoiceNumber($paymentInvoiceNumber)
     {
         if (strlen($paymentInvoiceNumber) > 16) {
-            throw new ErrorException('Invoice number must not exceed 16 characters in length');
+            throw new EwaySharedValidateFieldError('Invoice number must not exceed 16 characters in length');
         }
 
         $this->paymentInvoiceNumber = $paymentInvoiceNumber;
@@ -507,7 +342,7 @@ class Eway
     public function setPaymentInvoiceDescription($paymentInvoiceDescription)
     {
         if (strlen($paymentInvoiceDescription) > 64) {
-            throw new ErrorException('Invoice description must not exceed 64 characters in length');
+            throw new EwaySharedValidateFieldError('Invoice description must not exceed 64 characters in length');
         }
 
         $this->paymentInvoiceDescription = $paymentInvoiceDescription;
@@ -524,7 +359,7 @@ class Eway
     public function setPaymentInvoiceReference($paymentInvoiceReference)
     {
         if (strlen($paymentInvoiceReference) > 50) {
-            throw new ErrorException('Invoice reference must not exceed 50 characters in length');
+            throw new EwaySharedValidateFieldError('Invoice reference must not exceed 50 characters in length');
         }
 
         $this->paymentInvoiceReference = $paymentInvoiceReference;
@@ -543,8 +378,8 @@ class Eway
         //check to make sure the correct title is used
         $useableValues = array('Mr.', 'Ms.', 'Mrs.', 'Miss', 'Dr.', 'Sir.', 'Prof.');
 
-        if (in_array($customerTitle, $useableValues)) {
-            throw new ErrorException('customer title must be of the follow Values: Mr., Ms., Mrs., Miss, Dr., Sir., Prof.');
+        if (!in_array($customerTitle, $useableValues)) {
+            throw new EwaySharedMissingFieldError('customer title must be of the follow Values: Mr., Ms., Mrs., Miss, Dr., Sir., Prof.');
         }
 
         $this->customerTitle = $customerTitle;
@@ -561,7 +396,7 @@ class Eway
     public function setCustomerFirstName($customerFirstName)
     {
         if (strlen($customerFirstName) > 50) {
-            throw new ErrorException('First name must not exceed 50 characters in length');
+            throw new EwaySharedValidateFieldError('First name must not exceed 50 characters in length');
         }
 
         $this->customerFirstName = $customerFirstName;
@@ -578,7 +413,7 @@ class Eway
     public function setCustomerLastName($customerLastName)
     {
         if (strlen($customerLastName) > 50) {
-            throw new ErrorException('Last name must not exceed 50 characters in length');
+            throw new EwaySharedValidateFieldError('Last name must not exceed 50 characters in length');
         }
 
         $this->customerLastName = $customerLastName;
@@ -594,8 +429,8 @@ class Eway
      */
     public function setCustomerEmail($customerEmail)
     {
-        if (filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
-            throw new ErrorException('Please set a valid Email Address');
+        if (!filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
+            throw new EwaySharedValidateFieldError('Please set a valid Email Address');
         }
 
         $this->customerEmail = $customerEmail;
@@ -611,8 +446,8 @@ class Eway
      */
     public function setOption1($option1)
     {
-        if (strlen($headerText) > 255) {
-            throw new ErrorException('Option 1 must not exceed 255 characters in length');
+        if (strlen($option1) > 255) {
+            throw new EwaySharedValidateFieldError('Option 1 must not exceed 255 characters in length');
         }
 
         $this->option1 = $option1;
@@ -628,8 +463,8 @@ class Eway
      */
     public function setOption2($option2)
     {
-        if (strlen($headerText) > 255) {
-            throw new ErrorException('Option 2 must not exceed 255 characters in length');
+        if (strlen($option2) > 255) {
+            throw new EwaySharedValidateFieldError('Option 2 must not exceed 255 characters in length');
         }
 
         $this->option2 = $option2;
@@ -645,8 +480,8 @@ class Eway
      */
     public function setOption3($option3)
     {
-        if (strlen($headerText) > 255) {
-            throw new ErrorException('Option 3 must not exceed 255 characters in length');
+        if (strlen($option3) > 255) {
+            throw new EwaySharedValidateFieldError('Option 3 must not exceed 255 characters in length');
         }
 
         $this->option3 = $option3;
@@ -654,8 +489,14 @@ class Eway
         return $this;
     }
 
+    /**
+     * Create access code
+     *
+     * @return array results fromn eway
+     */
     public function createAccessCode()
     {
+        //crerate array
         $details = array(
                         'Customer' => array(
                                             'Title'     => $this->customerTitle,
@@ -664,9 +505,9 @@ class Eway
                                             'Email'     => $this->customerEmail
                                         ),
                         'Options' => array(
-                                            'Value' => $this->option1,
-                                            'Value' => $this->option2,
-                                            'Value' => $this->option3
+                                            array('Value' => $this->option1),
+                                            array('Value' => $this->option2),
+                                            array('Value' => $this->option3)
                                         ),
                         'Payment' => array(
                                             'TotalAmount'        => $this->paymentTotalAmount,
@@ -674,19 +515,51 @@ class Eway
                                             'InvoiceDescription' => $this->paymentInvoiceDescription,
                                             'InvoiceReference'   => $this->paymentInvoiceReference
                                         ),
-                        'RedirectUrl'      => $this->redirectUrl,
-                        'CancelUrl'        => $this->cancelUrl,
-                        'Method'           => 'CreateAccessCodeShared',
-                        'CustomerIP'       => $this->customerIp,
-                        'PartnerId'        => $this->partnerId,
-                        'TransactionType'  => 'Purchase',
-                        'LogoUrl'          => $this->logoUrl,
-                        'HeaderText'       => $this->headerText,
-                        'CustomerReadOnly' => true,
-                        'CustomView'       => $this->customView
+                        'RedirectUrl'         => $this->redirectUrl,
+                        'CancelUrl'           => $this->cancelUrl,
+                        'Method'              => 'ProcessPayment',
+                        'TransactionType'     => 'Purchase',
+                        'LogoUrl'             => $this->logoUrl,
+                        'HeaderText'          => $this->headerText,
+                        'CustomerReadOnly'    => true,
+                        'CustomView'          => $this->customView,
+                        'VerifyCustomerPhone' => false,
+                        'VerifyCustomerEmail' => false
                         );
 
-            )
+        //right endpoint depending if sandbox
+        $url = ($this->sandbox == true) ? 'https://api.sandbox.ewaypayments.com/CreateAccessCodeShared.json' : 'https://api.ewaypayments.com/CreateAccessCode.json';
+
+        //get results
+        return $this->curl->post($url, $details);
     }
 
+    /**
+     * Redirects to eway
+     *
+     * @return redirect
+     */
+    public function redirectToPayment()
+    {
+        $result = $this->createAccessCode();
+
+        //redirect to payment page
+        header('Location: ' . $result['SharedPaymentUrl']);
+        die();
+    }
+
+    /**
+     * the access is returned in the url you would generally use $_GET['AccessCode']
+     *
+     * @param  string $accessCode eWay access Code
+     * @return array  results of Transaction
+     */
+    public function getTransactionResults($accessCode)
+    {
+        //right endpoint depending if sandbox
+        $url = ($this->sandbox == true) ? 'https://api.sandbox.ewaypayments.com/GetAccessCodeResult.json' : 'https://api.ewaypayments.com/GetAccessCodeResult.json';
+
+        //get results
+        return $this->curl->post($url, array('AccessCode' => $accessCode));
+    }
 }
