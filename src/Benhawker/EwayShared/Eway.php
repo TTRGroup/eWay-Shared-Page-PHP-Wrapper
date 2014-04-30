@@ -528,7 +528,7 @@ class Eway
                         );
 
         //right endpoint depending if sandbox
-        $url = ($this->sandbox == true) ? 'https://api.sandbox.ewaypayments.com/CreateAccessCodeShared.json' : 'https://api.ewaypayments.com/CreateAccessCode.json';
+        $url = ($this->sandbox == true) ? 'https://api.sandbox.ewaypayments.com/CreateAccessCodeShared.json' : 'https://api.ewaypayments.com/CreateAccessCodeShared.json';
 
         //get results
         return $this->curl->post($url, $details);
